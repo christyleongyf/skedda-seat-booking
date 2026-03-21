@@ -18,6 +18,7 @@ import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
@@ -36,6 +37,7 @@ BOOKING_END   = os.getenv("BOOKING_END",   "18:00")
 DAYS_AHEAD    = int(os.getenv("DAYS_AHEAD", "12"))
 BOOKING_DAYS  = set(int(d) for d in os.getenv("BOOKING_DAYS", "0,1,2,3,4").split(","))
 VENUE_ID      = os.getenv("VENUE_ID", "202392")
+TIMEZONE      = ZoneInfo(os.getenv("TIMEZONE", "Asia/Singapore"))
 
 # Priority-ordered seat list: "name:id,name:id,..."
 # e.g. "GEMS 1:1281271,DOM 2:1273200,GEMS 5:1281275"
@@ -81,7 +83,10 @@ def resolve_target_date(days_ahead: int, explicit_date: str | None) -> date | No
     if explicit_date:
         target = date.fromisoformat(explicit_date)
     else:
-        target = date.today() + timedelta(days=days_ahead)
+        from datetime import datetime
+        today_sgt = datetime.now(TIMEZONE).date()
+        target = today_sgt + timedelta(days=days_ahead)
+        log.info("Today (SGT): %s → target: %s (%s)", today_sgt, target, DAY_NAMES[target.weekday()])
 
     if target.weekday() not in BOOKING_DAYS:
         log.info("Target date %s is a %s — not a booking day, skipping.",
@@ -252,6 +257,8 @@ def book_seat(target: date, dry_run: bool = False) -> bool:
 
         except Exception as exc:
             log.exception("Unexpected error: %s", exc)
+            page.screenshot(path="error-screenshot.png")
+            log.info("Saved error screenshot to error-screenshot.png")
             return False
 
         finally:

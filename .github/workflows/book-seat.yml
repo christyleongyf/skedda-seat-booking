@@ -35,4 +35,13 @@ jobs:
           BOOKING_END: "18:00"
           DAYS_AHEAD: "12"
           BOOKING_DAYS: "0,3,4"
+          TIMEZONE: "Asia/Singapore"
         run: python book_seat.py
+
+      - name: Upload error screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshot
+          path: error-screenshot.png
+          if-no-files-found: ignore
